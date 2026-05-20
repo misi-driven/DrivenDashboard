@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Driven – Dashboard</title>
+
+<!-- PWA / iOS app -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Driven">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: #faf9f6;
+  color: #1a1a1a;
+  line-height: 1.5;
+  min-height: 100vh;
+  /* iOS safe area */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.container { max-width: 1400px; margin: 0 auto; padding: 24px 16px; }
+@media (min-width: 768px) {
+  .container { padding: 32px 24px; }
+}
+
+/* Login overlay */
+.login-overlay, .setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: #faf9f6;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card, .setup-card {
+  background: #ffffff;
+  border: 1px solid #e8e4dc;
+  border-radius: 16px;
+  padding: 40px 32px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+.login-logo {
+  width: 56px; height: 56px;
+  background: #1a1a1a;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #faf9f6;
+  font-weight: 700;
+  font-size: 24px;
+  margin: 0 auto 20px;
+}
+.login-card h1, .setup-card h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.3px; }
+.login-card p, .setup-card p { color: #6b6760; font-size: 14px; margin-bottom: 24px; }
+.setup-card { text-align: left; max-width: 540px; }
+.setup-card .setup-logo { margin: 0 0 20px 0; }
+.login-card label, .setup-card label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b6760;
+  margin-bottom: 6px;
+  font-weight: 500;
+  text-align: left;
+}
+.login-card input, .setup-card input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #d8d4cc;
+  border-radius: 8px;
+  font-size: 16px; /* 16px aby iOS nezoomoval */
+  font-family: inherit;
+  margin-bottom: 16px;
+}
+.login-card input:focus, .setup-card input:focus {
+  outline: none;
+  border-color: #1a1a1a;
+}
+.btn-full {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+}
+.hint {
+  background: #fef9ee;
+  border-left: 3px solid #d4a574;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #6b6760;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.login-error {
+  background: #fdf4f3;
+  color: #c0392b;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+}
+.login-error.show { display: block; }
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b6760;
+  margin-left: 12px;
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #6ec07a;
+}
+.status-dot.syncing { background: #d4a574; animation: pulse 1s infinite; }
+.status-dot.error { background: #c0392b; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e8e4dc;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 40px; height: 40px;
+  background: #1a1a1a;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: #faf9f6;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+.brand-text h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+.brand-text p { font-size: 13px; color: #6b6760; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+button {
+  background: #1a1a1a;
+  color: #faf9f6;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  min-height: 38px;
+}
+button:hover { background: #333; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary {
+  background: transparent;
+  color: #1a1a1a;
+  border: 1px solid #d8d4cc;
+}
+button.secondary:hover { background: #f0ede5; }
+button.ghost {
+  background: transparent;
+  color: #6b6760;
+  border: none;
+  padding: 6px 10px;
+}
+button.ghost:hover { color: #1a1a1a; background: #f0ede5; }
+button.danger {
+  background: transparent;
+  color: #c0392b;
+  border: 1px solid #f0d4d0;
+}
+button.danger:hover { background: #fdf4f3; }
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (min-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+}
+.kpi {
+  background: #ffffff;
+  border: 1px solid #e8e4dc;
+  border-radius: 12px;
+  padding: 16px;
+}
+@media (min-width: 768px) { .kpi { padding: 20px; } }
+.kpi-label {
+  font-size: 11px;
+  color: #6b6760;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.kpi-value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+@media (min-width: 768px) { .kpi-value { font-size: 28px; } }
+.kpi-sub { font-size: 11px; color: #6b6760; }
+.kpi-sub.positive { color: #2d7a3e; }
+.kpi-sub.negative { color: #c0392b; }
+
+.goals-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (min-width: 800px) {
+  .goals-row { grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+}
+
+.goal-card {
+  background: #1a1a1a;
+  color: #faf9f6;
+  border-radius: 12px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+@media (min-width: 768px) { .goal-card { padding: 24px; gap: 24px; } }
+.goal-card.alt { background: #2d2a25; }
+.goal-info h3 {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.goal-info .goal-main {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (min-width: 768px) { .goal-info .goal-main { font-size: 18px; } }
+.goal-edit {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #faf9f6;
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  min-height: auto;
+}
+.goal-edit:hover { background: rgba(255,255,255,0.1); }
+.goal-bar {
+  height: 8px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.goal-bar-fill {
+  height: 100%;
+  background: #d4a574;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.goal-bar-fill.complete { background: #6ec07a; }
+.goal-stats { font-size: 12px; opacity: 0.7; margin-top: 8px; }
+.goal-percent {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+@media (min-width: 768px) { .goal-percent { font-size: 36px; } }
+
+.section {
+  background: #ffffff;
+  border: 1px solid #e8e4dc;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+@media (min-width: 768px) { .section { padding: 24px; margin-bottom: 24px; } }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.section-title { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+@media (min-width: 768px) { .section-title { font-size: 16px; } }
+.section-actions { display: flex; gap: 8px; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+@media (min-width: 900px) {
+  .grid-2 { grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
+}
+
+.chart-container { position: relative; height: 240px; }
+@media (min-width: 768px) { .chart-container { height: 280px; } }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 500;
+  color: #6b6760;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e8e4dc;
+  white-space: nowrap;
+}
+tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #f0ede5;
+}
+tbody tr:last-child td { border-bottom: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media (min-width: 700px) { .pipeline { grid-template-columns: repeat(4, 1fr); gap: 12px; } }
+.pipeline-stage {
+  padding: 14px;
+  border-radius: 8px;
+  background: #faf9f6;
+  border: 1px solid #e8e4dc;
+}
+.pipeline-stage-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b6760;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.pipeline-stage-value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.pipeline-stage-sub { font-size: 11px; color: #6b6760; margin-top: 4px; }
+
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #faf9f6;
+  font-size: 13px;
+}
+.task-item.done { opacity: 0.5; text-decoration: line-through; }
+.task-checkbox {
+  width: 22px; height: 22px;
+  border: 1.5px solid #6b6760;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.task-checkbox.checked { background: #1a1a1a; border-color: #1a1a1a; }
+.task-checkbox.checked::after { content: '✓'; color: #faf9f6; font-size: 14px; }
+.task-owner {
+  font-size: 11px;
+  color: #6b6760;
+  padding: 2px 8px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e8e4dc;
+}
+.task-text { flex: 1; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.modal-sub { font-size: 13px; color: #6b6760; margin-bottom: 20px; }
+.form-row { margin-bottom: 16px; }
+.form-row label {
+  display: block;
+  font-size: 12px;
+  color: #6b6760;
+  margin-bottom: 6px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-row input, .form-row select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d8d4cc;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  background: #ffffff;
+}
+.form-row input:focus, .form-row select:focus {
+  outline: none;
+  border-color: #1a1a1a;
+}
+.form-row-double {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e4dc;
+}
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6b6760;
+  font-size: 13px;
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.badge-success { background: #e6f4ea; color: #2d7a3e; }
+.badge-warn { background: #fef3e0; color: #b8742a; }
+.badge-info { background: #e8eef7; color: #2a5fa3; }
+footer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e8e4dc;
+  font-size: 12px;
+  color: #6b6760;
+  text-align: center;
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a1a1a;
+  color: #faf9f6;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 300;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.error { background: #c0392b; }
+</style>
+</head>
+<body>
+
+<!-- Login overlay - heslo -->
+<div class="login-overlay" id="loginOverlay" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">D</div>
+    <h1>Driven Dashboard</h1>
+    <p>Pre prístup zadajte tímové heslo</p>
+    <div class="login-error" id="loginError">Nesprávne heslo</div>
+    <input type="password" id="loginPassword" placeholder="Heslo" autocomplete="current-password">
+    <button class="btn-full" onclick="checkPassword()">Prihlásiť sa</button>
+  </div>
+</div>
+
+<!-- Setup overlay - prvé pripojenie -->
+<div class="setup-overlay" id="setupOverlay" style="display:none">
+  <div class="setup-card">
+    <div class="login-logo setup-logo">D</div>
+    <h1>Vitajte v Driven Dashboard</h1>
+    <p>Pred prvým použitím nastavte prepojenie na Google Sheets.</p>
+    <div class="hint">
+      💡 Postup nájdete v súbore <strong>NAVOD.md</strong>. URL získate z Apps Script po deploy ako Web App.
+    </div>
+    <label>URL vašej Apps Script Web App</label>
+    <input type="text" id="setupUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="btn-full" onclick="saveSetup()">Pripojiť a načítať dáta</button>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="container" id="mainContent" style="display:none">
+  <header>
+    <div class="brand">
+      <div class="brand-mark">D</div>
+      <div class="brand-text">
+        <h1>Driven 
+          <span class="status-indicator">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Synchronizované</span>
+          </span>
+        </h1>
+        <p>Mesačný prehľad • <span id="currentMonth"></span></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="secondary" onclick="loadAll(true)">↻</button>
+      <button class="secondary" onclick="openModal('settingsModal')">⚙</button>
+      <button onclick="openModal('saleModal')">+ Predaj</button>
+    </div>
+  </header>
+
+  <div class="goals-row">
+    <div class="goal-card">
+      <div class="goal-info">
+        <h3>Mesačný cieľ</h3>
+        <div class="goal-main">
+          <span id="monthlyGoalText">— áut</span>
+          <button class="goal-edit" onclick="openModal('settingsModal')">Upraviť</button>
+        </div>
+        <div class="goal-bar"><div class="goal-bar-fill" id="monthlyGoalBar"></div></div>
+        <div class="goal-stats" id="monthlyGoalStats"></div>
+      </div>
+      <div class="goal-percent" id="monthlyGoalPercent">0%</div>
+    </div>
+
+    <div class="goal-card alt">
+      <div class="goal-info">
+        <h3>Ročný cieľ <span id="currentYear"></span></h3>
+        <div class="goal-main"><span id="yearlyGoalText">— áut</span></div>
+        <div class="goal-bar"><div class="goal-bar-fill" id="yearlyGoalBar"></div></div>
+        <div class="goal-stats" id="yearlyGoalStats"></div>
+      </div>
+      <div class="goal-percent" id="yearlyGoalPercent">0%</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Predaných áut</div>
+      <div class="kpi-value" id="kpiCount">0</div>
+      <div class="kpi-sub" id="kpiCountDelta">tento mesiac</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Tržby</div>
+      <div class="kpi-value" id="kpiRevenue">0 €</div>
+      <div class="kpi-sub" id="kpiRevenueDelta">tento mesiac</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Marža</div>
+      <div class="kpi-value" id="kpiMargin">0 €</div>
+      <div class="kpi-sub" id="kpiMarginPct">priemerne 0%</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Konverzia</div>
+      <div class="kpi-value" id="kpiConversion">0%</div>
+      <div class="kpi-sub" id="kpiConversionSub">z leadov</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Pipeline klientov</div>
+      <button class="secondary" onclick="openModal('pipelineModal')">Upraviť</button>
+    </div>
+    <div class="pipeline" id="pipeline"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Trend</div>
+        <button class="ghost" onclick="toggleChartView()" id="chartToggle">Tržby</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Tasky tímu</div>
+        <button class="secondary" onclick="openModal('taskModal')">+</button>
+      </div>
+      <div class="task-list" id="taskList"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Posledné predaje</div>
+      <div class="section-actions">
+        <button class="ghost" onclick="exportCSV()">Export</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="salesTable"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Mesačná história</div>
+    </div>
+    <div class="table-wrap" id="historyTable"></div>
+  </div>
+
+  <footer>
+    <p>Driven Dashboard • Synchronizované cez Google Sheets</p>
+    <p style="margin-top: 4px;">
+      <button class="ghost" onclick="logout()" style="font-size:11px">Odhlásiť</button>
+      <button class="ghost" onclick="changeUrl()" style="font-size:11px">Zmeniť pripojenie</button>
+    </p>
+  </footer>
+</div>
+
+<!-- MODALS -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <h2>Nastavenia cieľov</h2>
+    <p class="modal-sub">Cieľ si môžete kedykoľvek zmeniť.</p>
+    <div class="form-row">
+      <label>Mesačný cieľ (počet áut)</label>
+      <input type="number" id="setMonthlyGoal" min="1" max="500">
+    </div>
+    <div class="form-row">
+      <label>Ročný cieľ (počet áut)</label>
+      <input type="number" id="setYearlyGoal" min="1" max="5000">
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('settingsModal')">Zrušiť</button>
+      <button onclick="saveSettings()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="saleModal">
+  <div class="modal">
+    <h2>Nový predaj</h2>
+    <div class="form-row">
+      <label>Dátum</label>
+      <input type="date" id="saleDate">
+    </div>
+    <div class="form-row">
+      <label>Auto (značka a model)</label>
+      <input type="text" id="saleCar" placeholder="napr. Škoda Octavia">
+    </div>
+    <div class="form-row">
+      <label>Klient</label>
+      <input type="text" id="saleClient" placeholder="Meno klienta">
+    </div>
+    <div class="form-row-double">
+      <div class="form-row" style="margin-bottom:0">
+        <label>Predajná cena (€)</label>
+        <input type="number" id="salePrice" inputmode="numeric" placeholder="15000">
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label>Nákup. cena (€)</label>
+        <input type="number" id="saleCost" inputmode="numeric" placeholder="13500">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:16px">
+      <label>Typ</label>
+      <select id="saleType">
+        <option value="B2C">B2C – súkromná osoba</option>
+        <option value="B2B">B2B – firma / fleet</option>
+        <option value="Vývoz">Vývoz – zahraničie</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('saleModal')">Zrušiť</button>
+      <button onclick="addSale()" id="saveSaleBtn">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="pipelineModal">
+  <div class="modal">
+    <h2>Pipeline – tento mesiac</h2>
+    <div class="form-row">
+      <label>Leady (záujemcovia)</label>
+      <input type="number" id="pipeLeads" min="0" inputmode="numeric">
+    </div>
+    <div class="form-row">
+      <label>Konzultácie</label>
+      <input type="number" id="pipeConsult" min="0" inputmode="numeric">
+    </div>
+    <div class="form-row">
+      <label>Obhliadky</label>
+      <input type="number" id="pipeViewings" min="0" inputmode="numeric">
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('pipelineModal')">Zrušiť</button>
+      <button onclick="savePipeline()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="taskModal">
+  <div class="modal">
+    <h2>Nový task</h2>
+    <div class="form-row">
+      <label>Popis</label>
+      <input type="text" id="taskText" placeholder="Napr. Pripraviť lead gen formulár">
+    </div>
+    <div class="form-row">
+      <label>Zodpovedný</label>
+      <select id="taskOwner">
+        <option>Dodo</option>
+        <option>Dianka</option>
+        <option>Miško</option>
+        <option>Tím</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="closeModal('taskModal')">Zrušiť</button>
+      <button onclick="addTask()">Pridať</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==========================================
+// HESLO - TU NASTAVTE TIMOVÉ HESLO
+// ==========================================
+// POZOR: Toto nie je bankova bezpecnost. Heslo je v HTML kode.
+// Sluzi len ako "zamok na dvere" pre vas troch.
+// Niekto kto nazera do source kodu ho uvidi.
+const TEAM_PASSWORD = 'driven2026';
+// ==========================================
+
+const URL_KEY = 'driven_apps_script_url';
+const AUTH_KEY = 'driven_authenticated';
+let API_URL = localStorage.getItem(URL_KEY) || '';
+
+let state = {
+  sales: [],
+  pipeline: { leads: 0, consult: 0, viewings: 0 },
+  goals: { monthly: 10, yearly: 120 },
+  tasks: []
+};
+
+let chartMode = 'count';
+let trendChart = null;
+
+const SK_MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+
+// ============ LOGIN ============
+function checkPassword() {
+  const input = document.getElementById('loginPassword').value;
+  const errorEl = document.getElementById('loginError');
+  if (input === TEAM_PASSWORD) {
+    sessionStorage.setItem(AUTH_KEY, 'yes');
+    document.getElementById('loginOverlay').style.display = 'none';
+    startApp();
+  } else {
+    errorEl.classList.add('show');
+    document.getElementById('loginPassword').value = '';
+    setTimeout(() => errorEl.classList.remove('show'), 3000);
+  }
+}
+
+function logout() {
+  if (!confirm('Odhlásiť sa?')) return;
+  sessionStorage.removeItem(AUTH_KEY);
+  location.reload();
+}
+
+// Enter key v hesle
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.getElementById('loginOverlay').style.display !== 'none') {
+    checkPassword();
+  }
+});
+
+// ============ API ============
+async function apiGet() {
+  const resp = await fetch(API_URL + '?action=getAll&t=' + Date.now());
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || 'API error');
+  return json.data;
+}
+
+async function apiPost(action, payload) {
+  const resp = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, ...payload })
+  });
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || 'API error');
+  return json;
+}
+
+function setStatus(s, message) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (!dot) return;
+  dot.className = 'status-dot' + (s === 'syncing' ? ' syncing' : s === 'error' ? ' error' : '');
+  text.textContent = message;
+}
+
+function showToast(message, isError) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============ SETUP ============
+function saveSetup() {
+  const url = document.getElementById('setupUrl').value.trim();
+  if (!url || !url.startsWith('https://script.google.com/')) {
+    alert('Zadajte platnú URL z Apps Script Web App (začína na https://script.google.com/...)');
+    return;
+  }
+  localStorage.setItem(URL_KEY, url);
+  API_URL = url;
+  document.getElementById('setupOverlay').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+  loadAll(true);
+}
+
+function changeUrl() {
+  if (!confirm('Zmeniť URL pripojenia? Bude treba zadať novú adresu.')) return;
+  localStorage.removeItem(URL_KEY);
+  location.reload();
+}
+
+// ============ LOAD ============
+async function loadAll(showToastMsg) {
+  if (!API_URL) return;
+  setStatus('syncing', 'Načítavam...');
+  try {
+    const data = await apiGet();
+    state.sales = data.sales || [];
+    state.pipeline = data.pipeline || { leads: 0, consult: 0, viewings: 0 };
+    state.goals = data.goals || { monthly: 10, yearly: 120 };
+    state.tasks = data.tasks || [];
+    renderAll();
+    setStatus('ok', 'Synchronizované');
+    if (showToastMsg) showToast('Dáta načítané');
+  } catch (err) {
+    setStatus('error', 'Chyba pripojenia');
+    showToast('Chyba: ' + err.message, true);
+    console.error(err);
+  }
+}
+
+// ============ HELPERS ============
+function fmtEur(n) {
+  return new Intl.NumberFormat('sk-SK', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+}
+function monthKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function monthLabel(key) {
+  const [y,m] = key.split('-');
+  return `${SK_MONTHS[parseInt(m)-1]} ${y}`;
+}
+function getMonthSales(key) {
+  return state.sales.filter(s => monthKey(s.date) === key);
+}
+function getYearSales(year) {
+  return state.sales.filter(s => new Date(s.date).getFullYear() === year);
+}
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatDate(s) {
+  const d = new Date(s);
+  return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' });
+}
+
+// ============ RENDER ============
+function renderAll() {
+  document.getElementById('currentMonth').textContent = monthLabel(currentMonthKey());
+  document.getElementById('currentYear').textContent = new Date().getFullYear();
+  renderKPIs();
+  renderGoals();
+  renderPipeline();
+  renderTasks();
+  renderSalesTable();
+  renderHistory();
+  renderChart();
+}
+
+function renderKPIs() {
+  const current = getMonthSales(currentMonthKey());
+  const count = current.length;
+  const revenue = current.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+  const cost = current.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0);
+  const margin = revenue - cost;
+  const marginPct = revenue > 0 ? (margin / revenue * 100) : 0;
+
+  document.getElementById('kpiCount').textContent = count;
+  document.getElementById('kpiRevenue').textContent = fmtEur(revenue);
+  document.getElementById('kpiMargin').textContent = fmtEur(margin);
+  document.getElementById('kpiMarginPct').textContent = `priemerne ${marginPct.toFixed(1)}%`;
+
+  const leads = state.pipeline.leads || 0;
+  const conv = leads > 0 ? (count / leads * 100) : 0;
+  document.getElementById('kpiConversion').textContent = `${conv.toFixed(1)}%`;
+  document.getElementById('kpiConversionSub').textContent = `${count} z ${leads}`;
+
+  const prevDate = new Date();
+  prevDate.setMonth(prevDate.getMonth() - 1);
+  const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  const prev = getMonthSales(prevKey);
+  const prevCount = prev.length;
+  const prevRev = prev.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+
+  const countEl = document.getElementById('kpiCountDelta');
+  if (prevCount > 0) {
+    const countDelta = count - prevCount;
+    countEl.textContent = `${countDelta >= 0 ? '+' : ''}${countDelta} vs minulý`;
+    countEl.className = 'kpi-sub ' + (countDelta >= 0 ? 'positive' : 'negative');
+  } else {
+    countEl.textContent = 'tento mesiac';
+    countEl.className = 'kpi-sub';
+  }
+
+  const revEl = document.getElementById('kpiRevenueDelta');
+  if (prevRev > 0) {
+    const revDelta = revenue - prevRev;
+    revEl.textContent = `${revDelta >= 0 ? '+' : ''}${fmtEur(revDelta)} vs minulý`;
+    revEl.className = 'kpi-sub ' + (revDelta >= 0 ? 'positive' : 'negative');
+  } else {
+    revEl.textContent = 'tento mesiac';
+    revEl.className = 'kpi-sub';
+  }
+}
+
+function renderGoals() {
+  const monthCount = getMonthSales(currentMonthKey()).length;
+  const monthGoal = state.goals.monthly;
+  const monthPct = Math.min(100, Math.round(monthCount / monthGoal * 100));
+
+  document.getElementById('monthlyGoalText').textContent = `${monthGoal} áut za mesiac`;
+  document.getElementById('monthlyGoalBar').style.width = monthPct + '%';
+  document.getElementById('monthlyGoalBar').className = 'goal-bar-fill' + (monthCount >= monthGoal ? ' complete' : '');
+  document.getElementById('monthlyGoalPercent').textContent = monthPct + '%';
+  document.getElementById('monthlyGoalStats').textContent = monthCount >= monthGoal
+    ? `🎯 Splnené! ${monthCount} z ${monthGoal}`
+    : `${monthCount} z ${monthGoal} áut`;
+
+  const currentYear = new Date().getFullYear();
+  const yearCount = getYearSales(currentYear).length;
+  const yearGoal = state.goals.yearly;
+  const yearPct = Math.min(100, Math.round(yearCount / yearGoal * 100));
+
+  document.getElementById('yearlyGoalText').textContent = `${yearGoal} áut za rok`;
+  document.getElementById('yearlyGoalBar').style.width = yearPct + '%';
+  document.getElementById('yearlyGoalBar').className = 'goal-bar-fill' + (yearCount >= yearGoal ? ' complete' : '');
+  document.getElementById('yearlyGoalPercent').textContent = yearPct + '%';
+
+  const monthsPassed = new Date().getMonth() + 1;
+  const projected = monthsPassed > 0 ? Math.round(yearCount / monthsPassed * 12) : 0;
+  document.getElementById('yearlyGoalStats').textContent =
+    `${yearCount} / ${yearGoal} • projekcia: ${projected}`;
+}
+
+function renderPipeline() {
+  const closed = getMonthSales(currentMonthKey()).length;
+  const stages = [
+    { label: 'Leady', value: state.pipeline.leads || 0, sub: 'záujemcovia' },
+    { label: 'Konzultácie', value: state.pipeline.consult || 0, sub: 'oslovené' },
+    { label: 'Obhliadky', value: state.pipeline.viewings || 0, sub: 'fyzicky' },
+    { label: 'Uzavreté', value: closed, sub: 'predaje' }
+  ];
+  document.getElementById('pipeline').innerHTML = stages.map(s => `
+    <div class="pipeline-stage">
+      <div class="pipeline-stage-label">${s.label}</div>
+      <div class="pipeline-stage-value">${s.value}</div>
+      <div class="pipeline-stage-sub">${s.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  if (state.tasks.length === 0) {
+    list.innerHTML = '<div class="empty">Žiadne tasky. Pridajte prvý.</div>';
+    return;
+  }
+  list.innerHTML = state.tasks.map(t => `
+    <div class="task-item ${t.done ? 'done' : ''}">
+      <div class="task-checkbox ${t.done ? 'checked' : ''}" onclick="toggleTask(${t.id})"></div>
+      <div class="task-text">${escapeHtml(t.text)}</div>
+      <div class="task-owner">${escapeHtml(t.owner)}</div>
+      <button class="ghost" onclick="deleteTask(${t.id})" style="font-size:11px;padding:4px 8px;min-height:auto">×</button>
+    </div>
+  `).join('');
+}
+
+function renderSalesTable() {
+  const sales = [...state.sales].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+  if (sales.length === 0) {
+    document.getElementById('salesTable').innerHTML = '<div class="empty">Žiadne predaje. Pridajte prvý.</div>';
+    return;
+  }
+  const rows = sales.map(s => {
+    const margin = (parseFloat(s.price) || 0) - (parseFloat(s.cost) || 0);
+    const marginPct = s.price > 0 ? (margin / s.price * 100) : 0;
+    const badge = s.type === 'B2B' ? 'badge-info' : s.type === 'Vývoz' ? 'badge-warn' : 'badge-success';
+    return `
+      <tr>
+        <td>${formatDate(s.date)}</td>
+        <td><strong>${escapeHtml(s.car)}</strong></td>
+        <td>${escapeHtml(s.client)}</td>
+        <td><span class="badge ${badge}">${s.type}</span></td>
+        <td class="num">${fmtEur(s.price)}</td>
+        <td class="num">${fmtEur(margin)}</td>
+        <td class="num">${marginPct.toFixed(1)}%</td>
+        <td><button class="ghost danger" onclick="deleteSale(${s.id})" style="font-size:11px;padding:4px 8px;min-height:auto">×</button></td>
+      </tr>
+    `;
+  }).join('');
+  document.getElementById('salesTable').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Dátum</th><th>Auto</th><th>Klient</th><th>Typ</th>
+          <th class="num">Cena</th><th class="num">Marža</th><th class="num">Marža %</th><th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderHistory() {
+  const months = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const sales = getMonthSales(key);
+    const revenue = sales.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+    const cost = sales.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0);
+    months.push({ key, label: monthLabel(key), count: sales.length, revenue, margin: revenue - cost });
+  }
+  const filtered = months.filter(m => m.count > 0);
+  const toShow = filtered.length > 0 ? filtered : months.slice(-3);
+
+  if (toShow.length === 0 || toShow.every(m => m.count === 0)) {
+    document.getElementById('historyTable').innerHTML = '<div class="empty">Žiadne historické dáta zatiaľ.</div>';
+    return;
+  }
+
+  const goal = state.goals.monthly;
+  const rows = toShow.reverse().map(m => {
+    const pct = Math.min(100, Math.round(m.count / goal * 100));
+    return `
+      <tr>
+        <td><strong>${m.label}</strong></td>
+        <td class="num">${m.count}</td>
+        <td class="num">${fmtEur(m.revenue)}</td>
+        <td class="num">${fmtEur(m.margin)}</td>
+        <td class="num">${pct}%</td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('historyTable').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Mesiac</th><th class="num">Predaje</th>
+          <th class="num">Tržby</th><th class="num">Marža</th><th class="num">Cieľ</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderChart() {
+  const ctx = document.getElementById('trendChart');
+  if (!ctx) return;
+  const months = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const sales = getMonthSales(key);
+    months.push({
+      label: SK_MONTHS[d.getMonth()].slice(0,3) + ' ' + String(d.getFullYear()).slice(2),
+      count: sales.length,
+      revenue: sales.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0)
+    });
+  }
+
+  const labels = months.map(m => m.label);
+  const data = months.map(m => chartMode === 'count' ? m.count : m.revenue);
+  const goalLine = chartMode === 'count' ? Array(12).fill(state.goals.monthly) : null;
+
+  if (trendChart) trendChart.destroy();
+
+  const datasets = [{
+    label: chartMode === 'count' ? 'Predané autá' : 'Tržby (€)',
+    data: data,
+    backgroundColor: 'rgba(212, 165, 116, 0.85)',
+    borderColor: '#a47d4f',
+    borderWidth: 1.5,
+    borderRadius: 6,
+    maxBarThickness: 36
+  }];
+
+  if (goalLine) {
+    datasets.push({
+      label: `Cieľ (${state.goals.monthly})`,
+      data: goalLine,
+      type: 'line',
+      borderColor: '#1a1a1a',
+      borderDash: [4, 4],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: false
+    });
+  }
+
+  trendChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'inherit', size: 11 }, color: '#6b6760', boxWidth: 10, boxHeight: 10 } },
+        tooltip: {
+          backgroundColor: '#1a1a1a', padding: 12,
+          callbacks: {
+            label: (ctx) => {
+              if (chartMode === 'revenue') return ctx.dataset.label + ': ' + fmtEur(ctx.parsed.y);
+              return ctx.dataset.label + ': ' + ctx.parsed.y;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#f0ede5' },
+          ticks: {
+            font: { family: 'inherit', size: 10 },
+            color: '#6b6760',
+            callback: (v) => chartMode === 'revenue' ? fmtEur(v) : v
+          }
+        },
+        x: { grid: { display: false }, ticks: { font: { family: 'inherit', size: 10 }, color: '#6b6760' } }
+      }
+    }
+  });
+}
+
+function toggleChartView() {
+  chartMode = chartMode === 'count' ? 'revenue' : 'count';
+  document.getElementById('chartToggle').textContent = chartMode === 'count' ? 'Tržby' : 'Počet';
+  renderChart();
+}
+
+// ============ MODALS ============
+function openModal(id) {
+  if (id === 'saleModal') {
+    document.getElementById('saleDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('saleCar').value = '';
+    document.getElementById('saleClient').value = '';
+    document.getElementById('salePrice').value = '';
+    document.getElementById('saleCost').value = '';
+  }
+  if (id === 'pipelineModal') {
+    document.getElementById('pipeLeads').value = state.pipeline.leads || 0;
+    document.getElementById('pipeConsult').value = state.pipeline.consult || 0;
+    document.getElementById('pipeViewings').value = state.pipeline.viewings || 0;
+  }
+  if (id === 'taskModal') {
+    document.getElementById('taskText').value = '';
+  }
+  if (id === 'settingsModal') {
+    document.getElementById('setMonthlyGoal').value = state.goals.monthly;
+    document.getElementById('setYearlyGoal').value = state.goals.yearly;
+    setTimeout(() => {
+      const monthlyInput = document.getElementById('setMonthlyGoal');
+      const yearlyInput = document.getElementById('setYearlyGoal');
+      monthlyInput.oninput = () => {
+        const m = parseInt(monthlyInput.value) || 0;
+        const currentYearly = parseInt(yearlyInput.value) || 0;
+        if (currentYearly === state.goals.yearly) {
+          yearlyInput.value = m * 12;
+        }
+      };
+    }, 50);
+  }
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ============ ACTIONS ============
+async function saveSettings() {
+  const monthly = parseInt(document.getElementById('setMonthlyGoal').value) || 1;
+  const yearly = parseInt(document.getElementById('setYearlyGoal').value) || (monthly * 12);
+
+  if (monthly < 1) { alert('Mesačný cieľ musí byť aspoň 1.'); return; }
+  if (yearly < monthly) { alert('Ročný cieľ nemôže byť menší ako mesačný.'); return; }
+
+  setStatus('syncing', 'Ukladám...');
+  try {
+    await apiPost('saveGoals', { data: { monthly, yearly } });
+    state.goals = { monthly, yearly };
+    closeModal('settingsModal');
+    renderAll();
+    setStatus('ok', 'Synchronizované');
+    showToast('Ciele uložené');
+  } catch (err) {
+    setStatus('error', 'Chyba');
+    showToast('Chyba pri ukladaní', true);
+  }
+}
+
+async function addSale() {
+  const date = document.getElementById('saleDate').value;
+  const car = document.getElementById('saleCar').value.trim();
+  const client = document.getElementById('saleClient').value.trim();
+  const price = parseFloat(document.getElementById('salePrice').value) || 0;
+  const cost = parseFloat(document.getElementById('saleCost').value) || 0;
+  const type = document.getElementById('saleType').value;
+
+  if (!date || !car || !client || price <= 0) {
+    alert('Vyplňte dátum, auto, klienta a predajnú cenu.');
+    return;
+  }
+
+  setStatus('syncing', 'Ukladám...');
+  document.getElementById('saveSaleBtn').disabled = true;
+  try {
+    const res = await apiPost('addSale', { data: { date, car, client, price, cost, type } });
+    state.sales.push({ id: res.id, date, car, client, price, cost, type });
+    closeModal('saleModal');
+    renderAll();
+    setStatus('ok', 'Synchronizované');
+    showToast('Predaj uložený');
+  } catch (err) {
+    setStatus('error', 'Chyba');
+    showToast('Chyba: ' + err.message, true);
+  } finally {
+    document.getElementById('saveSaleBtn').disabled = false;
+  }
+}
+
+async function deleteSale(id) {
+  if (!confirm('Naozaj zmazať tento predaj?')) return;
+  setStatus('syncing', 'Mažem...');
+  try {
+    await apiPost('deleteSale', { id });
+    state.sales = state.sales.filter(s => s.id !== id);
+    renderAll();
+    setStatus('ok', 'Synchronizované');
+    showToast('Predaj zmazaný');
+  } catch (err) {
+    setStatus('error', 'Chyba');
+    showToast('Chyba', true);
+  }
+}
+
+async function savePipeline() {
+  const leads = parseInt(document.getElementById('pipeLeads').value) || 0;
+  const consult = parseInt(document.getElementById('pipeConsult').value) || 0;
+  const viewings = parseInt(document.getElementById('pipeViewings').value) || 0;
+
+  setStatus('syncing', 'Ukladám...');
+  try {
+    await apiPost('savePipeline', { data: { leads, consult, viewings } });
+    state.pipeline = { leads, consult, viewings };
+    closeModal('pipelineModal');
+    renderAll();
+    setStatus('ok', 'Synchronizované');
+    showToast('Pipeline uložená');
+  } catch (err) {
+    setStatus('error', 'Chyba');
+    showToast('Chyba', true);
+  }
+}
+
+async function addTask() {
+  const text = document.getElementById('taskText').value.trim();
+  const owner = document.getElementById('taskOwner').value;
+  if (!text) { alert('Zadajte popis tasku.'); return; }
+
+  setStatus('syncing', 'Ukladám...');
+  try {
+    const res = await apiPost('addTask', { data: { text, owner, done: false } });
+    state.tasks.push({ id: res.id, text, owner, done: false });
+    closeModal('taskModal');
+    renderTasks();
+    setStatus('ok', 'Synchronizované');
+    showToast('Task pridaný');
+  } catch (err) {
+    setStatus('error', 'Chyba');
+    showToast('Chyba', true);
+  }
+}
+
+async function toggleTask(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  renderTasks();
+  try {
+    await apiPost('toggleTask', { id });
+  } catch (err) {
+    t.done = !t.done;
+    renderTasks();
+    showToast('Chyba pri zmene', true);
+  }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Zmazať task?')) return;
+  setStatus('syncing', 'Mažem...');
+  try {
+    await apiPost('deleteTask', { id });
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    renderTasks();
+    setStatus('ok', 'Synchronizované');
+  } catch (err) {
+    setStatus('error', 'Chyba');
+    showToast('Chyba', true);
+  }
+}
+
+function exportCSV() {
+  if (state.sales.length === 0) { alert('Žiadne predaje na export.'); return; }
+  const headers = ['Dátum','Auto','Klient','Typ','Predajná cena','Nákupná cena','Marža','Marža %'];
+  const rows = state.sales.map(s => {
+    const margin = (parseFloat(s.price) || 0) - (parseFloat(s.cost) || 0);
+    const marginPct = s.price > 0 ? (margin / s.price * 100).toFixed(1) : '0';
+    return [s.date, s.car, s.client, s.type, s.price, s.cost, margin, marginPct];
+  });
+  const csv = [headers, ...rows].map(r => r.map(cell => {
+    const v = String(cell).replace(/"/g, '""');
+    return /[",\n]/.test(v) ? `"${v}"` : v;
+  }).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `driven_predaje_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', (e) => {
+    if (e.target === el) el.classList.remove('show');
+  });
+});
+
+// ============ STARTUP ============
+function startApp() {
+  if (!API_URL) {
+    document.getElementById('setupOverlay').style.display = 'flex';
+  } else {
+    document.getElementById('mainContent').style.display = 'block';
+    loadAll();
+  }
+}
+
+// Check authentication
+const isAuth = sessionStorage.getItem(AUTH_KEY) === 'yes';
+if (!isAuth) {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('loginPassword').focus(), 100);
+} else {
+  startApp();
+}
+
+// Auto-refresh každých 30 sekúnd
+setInterval(() => {
+  if (API_URL && document.visibilityState === 'visible' && sessionStorage.getItem(AUTH_KEY) === 'yes') {
+    loadAll();
+  }
+}, 30000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && API_URL && sessionStorage.getItem(AUTH_KEY) === 'yes') {
+    loadAll();
+  }
+});
+
+// Service worker pre offline cache (PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      // Ignoruj chybu - service worker je nice-to-have
+    });
+  });
+}
+</script>
+
+</body>
+</html>
